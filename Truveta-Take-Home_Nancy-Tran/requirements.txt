@@ -4,3 +4,4 @@ numpy
 plotly
 duckdb
 jupyter
+streamlit-theme
