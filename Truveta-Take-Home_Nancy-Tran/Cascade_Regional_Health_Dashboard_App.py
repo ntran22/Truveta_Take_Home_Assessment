@@ -3,10 +3,20 @@ import pandas as pd
 import numpy as np
 import plotly.express as px
 from pathlib import Path
+from streamlit_theme import st_theme
 
 # ============================================================
 # Page Config
 # ============================================================
+
+theme = st_theme()
+
+if theme and theme["base"] == "dark":
+    bg_color = "#0E1117"
+    text_color = "#FAFAFA"
+else:
+    bg_color = "#FFFFFF"
+    text_color = "#000000"
 
 st.set_page_config(
     page_title="Cascade Regional Health | Value-Based Care Dashboard",
