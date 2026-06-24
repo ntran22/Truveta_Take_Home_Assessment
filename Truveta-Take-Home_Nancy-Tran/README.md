@@ -250,7 +250,19 @@ streamlit run Cascade_Regional_Health_Dashboard_App.py
 ## Recommended Run Order
 
 ```bash
-python truveta_db_setup.py
-jupyter notebook "Truveta Take Home_EDA_Nancy Tran.ipynb"
-streamlit run Cascade_Regional_Health_Dashboard_App.py
+Data Flow
+
+Raw CSV Files
+      ↓
+truveta_db_setup.py
+(Creates DuckDB database)
+      ↓
+Truveta Take Home_EDA_Nancy Tran.ipynb
+(SQL analysis, data cleaning, feature engineering)
+      ↓
+combined_table.csv
+(Curated analytics dataset)
+      ↓
+Cascade_Regional_Health_Dashboard_App.py
+(Streamlit dashboard)
 ```
