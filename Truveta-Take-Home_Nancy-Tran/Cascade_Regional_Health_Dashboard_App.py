@@ -3,7 +3,6 @@ import pandas as pd
 import numpy as np
 import plotly.express as px
 from pathlib import Path
-from streamlit_theme import st_theme
 
 # ============================================================
 # Page Config
@@ -15,61 +14,71 @@ st.set_page_config(
 )
 
 # ============================================================
-# Theme
+# Theme / Styling
+# Dark-mode compatible: do not hard-code app/page backgrounds.
+# Plotly charts use template="streamlit".
 # ============================================================
 
-theme = st_theme()
-
-if theme and theme.get("base") == "dark":
-    bg_color = "#0E1117"
-    text_color = "#FAFAFA"
-    sidebar_bg = "#1E1E1E"
-    tab_bg = "#262730"
-    plot_bg = "#0E1117"
-else:
-    bg_color = "#FFFFFF"
-    text_color = "#000000"
-    sidebar_bg = "#F7F9FB"
-    tab_bg = "#F7F9FB"
-    plot_bg = "#FFFFFF"
-
 st.markdown(
-    f"""
+    """
     <style>
-    .stApp {{
-        background-color: {bg_color};
-        color: {text_color};
-    }}
-
-    h1, h2, h3 {{
+    h1, h2, h3 {
         color: #2C2FAB;
-    }}
+    }
 
-    div[data-testid="stMetricValue"] {{
+    div[data-testid="stMetricValue"] {
         color: #00C3B5;
-    }}
+    }
 
-    section[data-testid="stSidebar"] {{
-        background-color: {sidebar_bg};
-        border-right: 1px solid #E5E7EB;
-    }}
-
-    .stTabs [data-baseweb="tab"] {{
-        background-color: {tab_bg};
+    .stTabs [data-baseweb="tab"] {
         border-radius: 10px 10px 0px 0px;
         padding: 10px 18px;
         color: #2C2FAB;
         font-weight: 600;
-    }}
+    }
 
-    .stTabs [aria-selected="true"] {{
-        background-color: #00C3B5;
-        color: white;
-    }}
+    .stTabs [aria-selected="true"] {
+        background-color: #00C3B5 !important;
+        color: white !important;
+    }
+
+    .stTabs [data-baseweb="tab-highlight"] {
+        background-color: #2C2FAB !important;
+        height: 3px !important;
+    }
+
+    button[role="tab"][aria-selected="true"] {
+        border-bottom: 3px solid #2C2FAB !important;
+    }
+
+    span[data-baseweb="tag"] {
+        background-color: #00C3B5 !important;
+        border-color: #00C3B5 !important;
+    }
+
+    span[data-baseweb="tag"] span {
+        color: white !important;
+    }
+
+    span[data-baseweb="tag"] svg {
+        color: white !important;
+        fill: white !important;
+    }
     </style>
     """,
     unsafe_allow_html=True
 )
+
+
+def apply_chart_theme(fig, height=None):
+    fig.update_layout(
+        template="streamlit",
+        title_font_color="#2C2FAB"
+    )
+    if height:
+        fig.update_layout(height=height)
+    return fig
+
 
 # ============================================================
 # Title
@@ -87,9 +96,6 @@ st.markdown(
 # ============================================================
 # Load Data
 # ============================================================
-
-# pt_df = pd.read_csv("data/patient.csv")
-# combined_df = pd.read_csv("data/combined_table.csv")
 
 BASE_DIR = Path(__file__).parent
 
@@ -109,7 +115,6 @@ for col in date_cols:
 pt_df["BirthDate"] = pd.to_datetime(pt_df["BirthDate"], errors="coerce")
 combined_df["Amount"] = pd.to_numeric(combined_df["Amount"], errors="coerce").fillna(0)
 
-# Use original EncounterType values directly
 combined_df["EncounterCategory"] = (
     combined_df["EncounterType"]
     .fillna("Unknown")
@@ -117,16 +122,13 @@ combined_df["EncounterCategory"] = (
     .str.strip()
 )
 
-# Remove only truly blank encounter types
 combined_df = combined_df[
     combined_df["EncounterCategory"].notna()
     & (combined_df["EncounterCategory"].astype(str).str.strip() != "")
 ].copy()
 
-# Create StartDateYear if missing
 if "StartDateYear" not in combined_df.columns:
     combined_df["StartDateYear"] = combined_df["StartDate"].dt.year
-
 
 # ============================================================
 # Sidebar Filters
@@ -155,7 +157,7 @@ filtered_df = combined_df[
     (combined_df["StartDate"].dt.date >= start_date_filter) &
     (combined_df["StartDate"].dt.date <= end_date_filter)
 ].copy()
-# EncounterType filter — shows ALL original EncounterType options
+
 st.sidebar.markdown("## Encounter Type Filters")
 
 encounter_type_options = sorted(
@@ -172,35 +174,6 @@ selected_encounter_types = st.sidebar.multiselect(
     default=encounter_type_options
 )
 
-st.markdown("""
-<style>
-
-/* Selected multiselect chips */
-span[data-baseweb="tag"] {
-    background-color: #00C3B5 !important;
-    border-color: #00C3B5 !important;
-}
-
-/* Chip text */
-span[data-baseweb="tag"] span {
-    color: white !important;
-}
-
-/* X button */
-span[data-baseweb="tag"] svg {
-    color: white !important;
-    fill: white !important;
-}
-
-/* Hover state */
-span[data-baseweb="tag"]:hover {
-    background-color: #00C3B5 !important;
-}
-
-</style>
-""", unsafe_allow_html=True)
-
-
 filtered_df = filtered_df[
     filtered_df["EncounterCategory"].isin(selected_encounter_types)
 ].copy()
@@ -209,16 +182,13 @@ filtered_pt_df = pt_df[
     pt_df["PatientId"].isin(filtered_df["PatientId"].unique())
 ].copy()
 
-
 # ============================================================
 # Helper Metrics
 # ============================================================
 
 total_patients = filtered_df["PatientId"].nunique()
 total_billed = filtered_df["Amount"].sum()
-
 years_observed = max(filtered_df["StartDateYear"].nunique(), 1)
-
 pmpy = total_billed / total_patients / years_observed if total_patients else 0
 
 # ============================================================
@@ -240,29 +210,6 @@ tab1, tab2, tab3, tab4 = st.tabs([
     "Cost & Utilization",
     "Care Management Opportunities"
 ])
-
-st.markdown("""
-<style>
-
-/* Active tab underline */
-.stTabs [data-baseweb="tab-highlight"] {
-    background-color: #2C2FAB !important;
-    height: 3px !important;
-}
-
-/* Alternative selector for newer Streamlit versions */
-button[role="tab"][aria-selected="true"] {
-    border-bottom: 3px solid #2C2FAB !important;
-}
-
-/* Optional: active tab background */
-.stTabs [aria-selected="true"] {
-    background-color: #00C3B5 !important;
-    color: white !important;
-}
-
-</style>
-""", unsafe_allow_html=True)
 
 # ============================================================
 # Executive Overview
@@ -287,7 +234,7 @@ with tab1:
     st.subheader("PMPY by Encounter Type")
 
     pmpy_encounter = (
-        filtered_df.groupby("EncounterCategory",dropna=False)
+        filtered_df.groupby("EncounterCategory", dropna=False)
         .agg(
             TotalBilled=("Amount", "sum"),
             Patients=("PatientId", "nunique")
@@ -307,7 +254,7 @@ with tab1:
         pmpy_encounter,
         x="EncounterCategory",
         y="PMPY",
-        text="PMPY",  # <-- add this
+        text="PMPY",
         title="PMPY by Encounter Type",
         labels={
             "EncounterCategory": "Encounter Type",
@@ -315,17 +262,13 @@ with tab1:
         },
         color_discrete_sequence=["#00C3B5"]
     )
-    
+
     fig.update_traces(
         texttemplate='$%{y:,.0f}',
         textposition='outside'
     )
-    
-    fig.update_layout(
-        plot_bgcolor="white",
-        paper_bgcolor="white",
-        title_font_color="#2C2FAB"
-    )
+
+    fig = apply_chart_theme(fig)
     st.plotly_chart(fig, use_container_width=True)
 
     st.subheader("Encounter Type Distribution")
@@ -355,23 +298,17 @@ with tab1:
         },
         color_discrete_sequence=["#19A4AE"]
     )
-    
+
     fig.update_traces(
         texttemplate='%{y:.1f}%',
         textposition='outside'
     )
-    
-    fig.update_layout(
-        plot_bgcolor="white",
-        paper_bgcolor="white",
-        title_font_color="#2C2FAB"
-    )
-    
+
+    fig = apply_chart_theme(fig)
     st.plotly_chart(fig, use_container_width=True)
-    
-    
+
     st.subheader("PMPY Trend Over Time")
-    
+
     pmpy_trend = (
         filtered_df.groupby("StartDateYearMonth")
         .agg(
@@ -381,17 +318,12 @@ with tab1:
         .reset_index()
         .sort_values("StartDateYearMonth")
     )
-    
-    pmpy_trend["PMPY"] = (
-    pmpy_trend["TotalBilled"] /
-    pmpy_trend["Patients"]
-) * 12
-    
+
     pmpy_trend["PMPY"] = (
         pmpy_trend["TotalBilled"] /
         pmpy_trend["Patients"]
     )
-    
+
     fig = px.line(
         pmpy_trend,
         x="StartDateYearMonth",
@@ -403,25 +335,22 @@ with tab1:
             "PMPY": "PMPY ($)"
         }
     )
-    
+
     fig.update_traces(
         line_color="#2C2FAB",
         marker_color="#2C2FAB",
         hovertemplate="<b>%{x}</b><br>PMPY: $%{y:,.0f}<extra></extra>"
     )
-    
+
     fig.update_layout(
-        height=500,
-        plot_bgcolor="white",
-        paper_bgcolor="white",
-        title_font_color="#2C2FAB",
         xaxis_title="Month",
         yaxis_title="PMPY ($)",
         hovermode="x unified"
     )
-    
+
+    fig = apply_chart_theme(fig, height=500)
     st.plotly_chart(fig, use_container_width=True)
-    
+
     st.caption("\* PMPY values are estimated using patients with at least one recorded encounter during the measurement period. In a production value-based care setting, PMPY would typically be calculated using the total attributed or enrolled population.")
 
 # ============================================================
@@ -471,10 +400,6 @@ with tab2:
     fig.update_traces(textposition="outside")
 
     fig.update_layout(
-        height=500,
-        plot_bgcolor="white",
-        paper_bgcolor="white",
-        title_font_color="#2C2FAB",
         xaxis=dict(dtick=1),
         yaxis_range=[
             0,
@@ -484,9 +409,9 @@ with tab2:
         uniformtext_mode="hide"
     )
 
+    fig = apply_chart_theme(fig, height=500)
     st.plotly_chart(fig, use_container_width=True)
 
-    # Filter out "No diagnosis recorded" for this tab only
     population_health_df = filtered_df[
         filtered_df["ConditionGroup"].fillna("").str.strip() != "No diagnosis recorded"
     ].copy()
@@ -541,10 +466,6 @@ with tab2:
     fig.update_traces(textposition="outside")
 
     fig.update_layout(
-        height=550,
-        plot_bgcolor="white",
-        paper_bgcolor="white",
-        title_font_color="#2C2FAB",
         xaxis_tickangle=-45,
         yaxis_range=[
             0,
@@ -554,6 +475,7 @@ with tab2:
         uniformtext_mode="hide"
     )
 
+    fig = apply_chart_theme(fig, height=550)
     st.plotly_chart(fig, use_container_width=True)
 
 # ============================================================
@@ -595,17 +517,13 @@ with tab3:
         },
         color_discrete_sequence=["#00C3B5"]
     )
-    
+
     fig.update_traces(
         texttemplate='$%{y:,.0f}',
         textposition='outside'
     )
-    
+
     fig.update_layout(
-        height=550,
-        plot_bgcolor="white",
-        paper_bgcolor="white",
-        title_font_color="#2C2FAB",
         xaxis_tickangle=-45,
         yaxis_range=[
             0,
@@ -613,6 +531,7 @@ with tab3:
         ]
     )
 
+    fig = apply_chart_theme(fig, height=550)
     st.plotly_chart(fig, use_container_width=True)
 
     st.subheader("PMPY by Census Region")
@@ -647,36 +566,33 @@ with tab3:
         },
         color_discrete_sequence=["#19A4AE"]
     )
-    
+
     fig.update_traces(
         texttemplate='$%{y:,.0f}',
         textposition='outside'
     )
-    
+
     fig.update_layout(
-        height=550,
-        plot_bgcolor="white",
-        paper_bgcolor="white",
-        title_font_color="#2C2FAB",
         yaxis_range=[
             0,
             pmpy_region["PMPY"].max() * 1.15
         ]
     )
 
+    fig = apply_chart_theme(fig, height=550)
     st.plotly_chart(fig, use_container_width=True)
 
     st.subheader("Monthly Billing Trends")
 
     st.markdown("""
     This chart displays billed amounts by encounter start month.
-    
+
     To maintain consistency across the dashboard, the trend is filtered using the selected
     **Encounter Start Date** range rather than billing date. As a result, billed amounts are
     attributed to the month in which the encounter occurred, allowing all metrics and visualizations
     to align to the same measurement period.
     """)
-    
+
     monthly_billing = (
         filtered_df.groupby("StartDateYearMonth", dropna=False)
         .agg(
@@ -685,7 +601,7 @@ with tab3:
         .reset_index()
         .sort_values("StartDateYearMonth")
     )
-    
+
     fig = px.line(
         monthly_billing,
         x="StartDateYearMonth",
@@ -697,38 +613,35 @@ with tab3:
             "TotalBilled": "Total Billed ($)"
         }
     )
-    
+
     fig.update_traces(
         line_color="#2C2FAB",
         marker_color="#2C2FAB",
         hovertemplate="<b>%{x}</b><br>Total Billed: $%{y:,.0f}<extra></extra>"
     )
-    
+
     fig.update_layout(
-        height=500,
-        plot_bgcolor="white",
-        paper_bgcolor="white",
-        title_font_color="#2C2FAB",
         xaxis_title="Encounter Start Month",
         yaxis_title="Total Billed ($)",
         hovermode="x unified"
     )
-    
+
+    fig = apply_chart_theme(fig, height=500)
     st.plotly_chart(fig, use_container_width=True)
 
     st.subheader("Inpatient vs Outpatient Utilization")
 
     st.markdown("""
     This visualization summarizes utilization across encounter settings.
-    
+
     **Encounter Percent** is calculated as:
-    
+
     **Encounter Type Encounters ÷ Total Encounters × 100**
-    
+
     This metric represents the proportion of all encounters attributed to each encounter type
     within the selected date range and encounter filters.
     """)
-    
+
     utilization = (
         filtered_df.groupby("EncounterCategory", dropna=False)
         .agg(
@@ -738,14 +651,14 @@ with tab3:
         )
         .reset_index()
     )
-    
+
     utilization["EncounterPercent"] = (
         utilization["Encounters"] /
         utilization["Encounters"].sum() * 100
     )
-    
+
     st.dataframe(utilization, use_container_width=True)
-    
+
     fig = px.bar(
         utilization,
         x="EncounterCategory",
@@ -758,7 +671,7 @@ with tab3:
         },
         color_discrete_sequence=["#00C3B5"]
     )
-    
+
     fig.update_traces(
         texttemplate="%{y:,.0f}",
         textposition="outside",
@@ -769,20 +682,17 @@ with tab3:
         ),
         customdata=utilization[["EncounterPercent"]]
     )
-    
+
     fig.update_layout(
-        height=550,
-        plot_bgcolor="white",
-        paper_bgcolor="white",
-        title_font_color="#2C2FAB",
         yaxis_range=[
             0,
             utilization["Encounters"].max() * 1.15
         ]
     )
-    
+
+    fig = apply_chart_theme(fig, height=550)
     st.plotly_chart(fig, use_container_width=True)
-    
+
     st.caption(
         "Encounter Percent = Number of encounters for an encounter type divided by total encounters within the filtered population."
     )
@@ -798,17 +708,17 @@ with tab4:
     This section identifies patients who may benefit from targeted care management interventions and serves as a **proxy for identifying potential care gaps and high-risk populations commonly addressed through HEDIS and value-based care programs**.\*
 
     **High-Cost Patients**
-    
+
     * Patients whose total billed amounts are at or above the 90th percentile of the filtered patient population.
     * These patients may represent individuals with complex medical needs, multiple chronic conditions, or frequent healthcare utilization.
-    
+
     **Super Utilizers**
-    
+
     * Patients whose encounter volume is at or above the 90th percentile of the filtered patient population.
     * Frequent utilization may indicate unmet care needs, fragmented care coordination, or opportunities for proactive intervention.
-    
+
     **High-Cost & Super Utilizer Overlap**
-    
+
     * Patients who meet both criteria: high total billed amounts and high encounter utilization.
     * These patients often represent a disproportionately high share of healthcare resource use and may benefit from intensive care management, care coordination, and chronic disease support programs.
     """)
@@ -845,9 +755,7 @@ with tab4:
     st.caption(
         f"Current thresholds: \n- High-cost patients ≥ ${high_cost_threshold:,.0f} \n- Super utilizers ≥ {super_utilizer_threshold:.0f} encounters."
     )
-    
-    
-    # Overall Patient Population Pie Chart
+
     patient_summary["CareManagementSegment"] = np.select(
         [
             patient_summary["HighCostAndSuperUtilizer"],
@@ -893,17 +801,13 @@ with tab4:
     )
 
     fig.update_layout(
-        plot_bgcolor="white",
-        paper_bgcolor="white",
-        height=600,
-        title_font_color="#2C2FAB",
         legend_title_text="Patient Segment"
     )
 
+    fig = apply_chart_theme(fig, height=600)
     st.plotly_chart(fig, use_container_width=True)
 
     st.dataframe(population_pie, use_container_width=True)
-    
 
     st.subheader("High-Cost Patients")
 
@@ -928,7 +832,7 @@ with tab4:
     ].sort_values(["TotalBilled", "Encounters"], ascending=False)
 
     st.dataframe(overlap, use_container_width=True)
-    
+
     st.caption("""
     **\*Important Note**
     \n• These measures are intended as proxy indicators of potential care gaps and population health opportunities and are not official HEDIS measures.
