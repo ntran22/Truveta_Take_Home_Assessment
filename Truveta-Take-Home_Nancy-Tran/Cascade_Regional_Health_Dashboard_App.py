@@ -9,15 +9,6 @@ from streamlit_theme import st_theme
 # Page Config
 # ============================================================
 
-theme = st_theme()
-
-if theme and theme["base"] == "dark":
-    bg_color = "#0E1117"
-    text_color = "#FAFAFA"
-else:
-    bg_color = "#FFFFFF"
-    text_color = "#000000"
-
 st.set_page_config(
     page_title="Cascade Regional Health | Value-Based Care Dashboard",
     layout="wide"
@@ -27,39 +18,54 @@ st.set_page_config(
 # Theme
 # ============================================================
 
+theme = st_theme()
+
+if theme and theme.get("base") == "dark":
+    bg_color = "#0E1117"
+    text_color = "#FAFAFA"
+    sidebar_bg = "#1E1E1E"
+    tab_bg = "#262730"
+    plot_bg = "#0E1117"
+else:
+    bg_color = "#FFFFFF"
+    text_color = "#000000"
+    sidebar_bg = "#F7F9FB"
+    tab_bg = "#F7F9FB"
+    plot_bg = "#FFFFFF"
+
 st.markdown(
-    """
+    f"""
     <style>
-    .stApp {
-        background-color: #FFFFFF;
-        color: #000000;
-    }
+    .stApp {{
+        background-color: {bg_color};
+        color: {text_color};
+    }}
 
-    h1, h2, h3 {
+    h1, h2, h3 {{
         color: #2C2FAB;
-    }
+    }}
 
-    div[data-testid="stMetricValue"] {
+    div[data-testid="stMetricValue"] {{
         color: #00C3B5;
-    }
+    }}
 
-    section[data-testid="stSidebar"] {
-        background-color: #F7F9FB;
+    section[data-testid="stSidebar"] {{
+        background-color: {sidebar_bg};
         border-right: 1px solid #E5E7EB;
-    }
+    }}
 
-    .stTabs [data-baseweb="tab"] {
-        background-color: #F7F9FB;
+    .stTabs [data-baseweb="tab"] {{
+        background-color: {tab_bg};
         border-radius: 10px 10px 0px 0px;
         padding: 10px 18px;
         color: #2C2FAB;
         font-weight: 600;
-    }
+    }}
 
-    .stTabs [aria-selected="true"] {
+    .stTabs [aria-selected="true"] {{
         background-color: #00C3B5;
         color: white;
-    }
+    }}
     </style>
     """,
     unsafe_allow_html=True
